@@ -6,9 +6,13 @@ from dotenv import load_dotenv
 from pymongo import MongoClient
 from datetime import datetime
 
-# Load API key and MongoDB URI
+# Load environment variables from .env locally (optional on Render)
 load_dotenv()
+
+# Configure Gemini API
 genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
+
+# MongoDB connection URI
 MONGO_DB_URI = os.getenv("MONGO_DB_URI")
 
 # Connect to MongoDB Atlas
@@ -16,7 +20,7 @@ client = MongoClient(MONGO_DB_URI)
 db = client["CollegeGateChatbot"]
 chat_collection = db["chat_history"]
 
-# Load CollegeGate website data from JSON
+# Load CollegeGate website data from JSON (make sure data.json is present in your repo)
 with open("data.json", "r", encoding="utf-8") as file:
     website_data = json.load(file)
 
@@ -40,44 +44,44 @@ def chat():
     user_input = request.json.get("message")
     print(f"Received user input: {user_input}")  # Debugging log
 
-    # Convert JSON data into a structured format
+    # Convert JSON data into a formatted string
     website_info = json.dumps(website_data, indent=2)
 
-    # Updated prompt with MongoDB integration
+    # Prepare prompt with rules
     full_prompt = f"""
-    You are CollegeGate Assistant, an expert in College education.
-    Use the following JSON data to provide accurate, engaging responses.
+You are CollegeGate Assistant, an expert in College education.
+Use the following JSON data to provide accurate, engaging responses.
 
-    - Provide information **ONLY** from CollegeGate’s JSON file or website: [https://www.collegegate.co](https://www.collegegate.co).
-    - If information isn't in JSON, politely guide users to the CollegeGate website or contact +91-9193993693.
+- Provide information **ONLY** from CollegeGate’s JSON file or website: [https://www.collegegate.co](https://www.collegegate.co).
+- If information isn't in JSON, politely guide users to the CollegeGate website or contact +91-9193993693.
 
-    Here is the JSON data: {website_info}
+Here is the JSON data: {website_info}
 
-     **Response Rules:**
-        **Check JSON data first for college information**.
-        **Keep responses concise (100-150 words)**.
-        **Use a professional yet friendly tone**.
-        **Format important points using bullet points (•)**.
-        **Do NOT use emojis or unnecessary symbols (*, -).**
+**Response Rules:**
+- Check JSON data first for college information.
+- Keep responses concise (100-150 words).
+- Use a professional yet friendly tone.
+- Format important points using bullet points (•).
+- Do NOT use emojis or unnecessary symbols (*, -).
 
-     **Answer Structure:**
-    - **If asking about a specific college:**  
-      Use only JSON data  
-      Highlight courses, facilities, placements  
-      Include college website if available  
+**Answer Structure:**
+- If asking about a specific college:  
+  Use only JSON data  
+  Highlight courses, facilities, placements  
+  Include college website if available  
 
-    - **If asking about admissions/general info:**  
-      Provide brief advice  
-      Suggest visiting CollegeGate website  
+- If asking about admissions/general info:  
+  Provide brief advice  
+  Suggest visiting CollegeGate website  
 
-    - **If data is missing:**  
-      Politely acknowledge it  
-      Suggest CollegeGate website/contact  
+- If data is missing:  
+  Politely acknowledge it  
+  Suggest CollegeGate website/contact  
 
-    **User Query:** {user_input}
+**User Query:** {user_input}
 
-    Provide a **clear, structured, and engaging** response.
-    """
+Provide a clear, structured, and engaging response.
+"""
 
     try:
         model = genai.GenerativeModel("gemini-2.0-flash")
@@ -92,4 +96,5 @@ def chat():
     return jsonify({"reply": reply})
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000)
+    port = int(os.environ.get("PORT", 5000))  # Dynamic port for Render
+    app.run(host="0.0.0.0", port=port)
